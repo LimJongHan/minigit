@@ -1,0 +1,266 @@
+# ══════════════════════════════════════════════════════════════════
+#  Mini Git — 기능 시연 스크립트 (기능 동작)
+#     실행:  python3 main.py --fixed-clock < demo/features.txt
+#     --fixed-clock: 09:00 부터 커밋마다 15분 → hash 가 매번 같다
+#     기대 출력:  demo/features.out  (diff 로 비교 가능)
+#  최종 그래프 (화살표 = 자식 → 부모):
+#     A ← P ← M1 ← M2 ← S    A  4280179 Set up project       P  7333cf5 Add cart
+#     A ← L ← F  ← M2        L  1cdd61f Add signup            F  8ff2dea Fix signup bug
+#         L ← M1             M1 70cfbfe merge(P, L)          M2 a16e116 merge(M1, F)
+#                            S  828a093 시계가 틀린 커밋 (08:00)
+# ══════════════════════════════════════════════════════════════════
+# ── 0. INIT 전에는 아무것도 못 한다 ──────────────────────────────
+mini-git> commit "too early"
+Not a repository. Run: INIT <user_name>
+
+# ── 1-1. INIT: main 브랜치 · HEAD · 현재 사용자 ────────────────────
+mini-git> init "Ari"
+Initialized repository.
+Current branch: main
+Current user: Ari
+
+# * = HEAD. 아직 커밋이 없어서 main 은 아무것도 안 가리킨다
+mini-git> branch
+* main (no commits)
+
+# ── 1-2. BRANCH → SWITCH → COMMIT 이 그 브랜치에 반영되는가 ────────
+mini-git> commit "Set up project"
+[main 4280179] Set up project
+
+mini-git> branch feature
+Created branch: feature
+
+# BRANCH 는 이름표만 붙인다: main · feature 가 같은 커밋, HEAD 는 아직 main
+mini-git> branch
+* main 4280179
+  feature 4280179
+
+mini-git> switch feature
+Switched to branch: feature
+
+mini-git> commit "Add signup feature"
+[feature 1cdd61f] Add signup feature
+
+# feature 만 전진했다 (main 은 Set up project 그대로)
+mini-git> branch
+  main 4280179
+* feature 1cdd61f
+
+mini-git> switch main
+Switched to branch: main
+
+mini-git> commit "Add cart feature"
+[main 7333cf5] Add cart feature
+
+mini-git> branch
+* main 7333cf5
+  feature 1cdd61f
+
+# ── 1-3. LOG: 부모가 항상 자식보다 먼저 ─────────────────────────
+mini-git> merge feature
+[main 70cfbfe] Merge branch 'feature' into main
+Merge: 7333cf5 1cdd61f
+
+mini-git> init "Ben"
+Reinitialized repository (history kept).
+Current branch: main
+Current user: Ben
+
+mini-git> switch feature
+Switched to branch: feature
+
+mini-git> commit "Fix SIGNUP, signout bug"
+[feature 8ff2dea] Fix SIGNUP, signout bug
+
+mini-git> switch main
+Switched to branch: main
+
+mini-git> merge feature
+[main a16e116] Merge branch 'feature' into main
+Merge: 70cfbfe 8ff2dea
+
+# merge 커밋은 두 부모가 모두 나온 뒤에야 나온다 (Merge: 줄 = 부모 2개)
+mini-git> log
+commit 4280179 (Ari, 2025-03-10 09:00:00)
+    Set up project
+commit 1cdd61f (Ari, 2025-03-10 09:15:00)
+    Add signup feature
+commit 7333cf5 (Ari, 2025-03-10 09:30:00)
+    Add cart feature
+commit 70cfbfe (Ari, 2025-03-10 09:45:00)
+Merge: 7333cf5 1cdd61f
+    Merge branch 'feature' into main
+commit 8ff2dea (Ben, 2025-03-10 10:00:00) [feature]
+    Fix SIGNUP, signout bug
+commit a16e116 (Ben, 2025-03-10 10:15:00) [HEAD -> main]
+Merge: 70cfbfe 8ff2dea
+    Merge branch 'feature' into main
+
+# 시계가 틀린 컴퓨터: 자식인데 부모보다 '과거' 시각
+mini-git> commit --date="2025-03-10 08:00:00" "Commit from a skewed clock"
+[main 828a093] Commit from a skewed clock
+
+# LOG 는 시각이 아니라 관계로 정렬 → 그래도 맨 마지막(부모 다음)
+mini-git> log
+commit 4280179 (Ari, 2025-03-10 09:00:00)
+    Set up project
+commit 1cdd61f (Ari, 2025-03-10 09:15:00)
+    Add signup feature
+commit 7333cf5 (Ari, 2025-03-10 09:30:00)
+    Add cart feature
+commit 70cfbfe (Ari, 2025-03-10 09:45:00)
+Merge: 7333cf5 1cdd61f
+    Merge branch 'feature' into main
+commit 8ff2dea (Ben, 2025-03-10 10:00:00) [feature]
+    Fix SIGNUP, signout bug
+commit a16e116 (Ben, 2025-03-10 10:15:00)
+Merge: 70cfbfe 8ff2dea
+    Merge branch 'feature' into main
+commit 828a093 (Ben, 2025-03-10 08:00:00) [HEAD -> main]
+    Commit from a skewed clock
+
+# ── 1-4. PATH: 최단 경로 / 동률이면 사전순 / 없으면 No path ────────
+# 같은 커밋 → 0칸
+mini-git> path HEAD HEAD
+Path: 828a093 (0 edges)
+
+# 부모-자식 → 1칸 (시계 틀린 커밋 → M2)
+mini-git> path 828a093 a16e116
+Path: 828a093 -> a16e116 (1 edge)
+
+# 형제 브랜치 F → P: 간선을 무방향으로 보므로 공통 조상 A 로 '올라갔다 내려온다'
+# 3칸짜리 후보가 F-L-A-P · F-L-M1-P · F-M2-M1-P 셋 → 문자열이 가장 작은 것
+mini-git> path 8ff2dea 7333cf5
+Path: 8ff2dea -> 1cdd61f -> 4280179 -> 7333cf5 (3 edges)
+
+# 동률 2칸: P → L 은 P-A-L(4280179) 과 P-M1-L(70cfbfe) → '4' < '7' 이라서 A 쪽
+mini-git> path 7333cf5 1cdd61f
+Path: 7333cf5 -> 4280179 -> 1cdd61f (2 edges)
+
+# 새 루트를 만들면 기존 이력과 연결이 끊긴다
+mini-git> switch --orphan docs
+Switched to a new orphan branch: docs
+
+mini-git> commit "Docs root"
+[docs 013f26e] Docs root
+
+mini-git> path docs main
+No path
+
+mini-git> switch main
+Switched to branch: main
+
+# ── 1-5. ANCESTORS: 모든 조상, 빠짐없이 · 중복 없이 ────────────────
+# L 은 M1 경유 · F 경유 두 갈래로 닿지만 한 번만 나온다
+mini-git> ancestors HEAD
+Ancestors of HEAD (6 commits):
+- a16e116: Merge branch 'feature' into main
+- 70cfbfe: Merge branch 'feature' into main
+- 8ff2dea: Fix SIGNUP, signout bug
+- 7333cf5: Add cart feature
+- 1cdd61f: Add signup feature
+- 4280179: Set up project
+
+# 루트의 조상은 0개
+mini-git> ancestors 4280179
+Ancestors of 4280179 (0 commits):
+
+# ── 1-6. SEARCH (역색인) ─────────────────────────────────────────
+# 대소문자 무시 + 'SIGNUP,' 의 쉼표도 떼고 색인했다
+mini-git> search signup
+Found 2 commits:
+- 1cdd61f: Add signup feature
+- 8ff2dea: Fix SIGNUP, signout bug
+
+# 여러 단어 = 모두 포함 (AND)
+mini-git> search "fix bug"
+Found 1 commit:
+- 8ff2dea: Fix SIGNUP, signout bug
+
+mini-git> search nothing
+Found 0 commits:
+
+mini-git> search --author=ben
+Found 4 commits:
+- 8ff2dea: Fix SIGNUP, signout bug
+- a16e116: Merge branch 'feature' into main
+- 828a093: Commit from a skewed clock
+- 013f26e: Docs root
+
+mini-git> search --author=ARI
+Found 4 commits:
+- 4280179: Set up project
+- 1cdd61f: Add signup feature
+- 7333cf5: Add cart feature
+- 70cfbfe: Merge branch 'feature' into main
+
+# ── 1-7. LOG --sort-by=date | author ────────────────────────────
+# date: 시계가 틀린 커밋이 맨 앞으로 (시각 기준)
+mini-git> log --sort-by=date
+commit 828a093 (Ben, 2025-03-10 08:00:00)
+    Commit from a skewed clock
+commit 4280179 (Ari, 2025-03-10 09:00:00)
+    Set up project
+commit 1cdd61f (Ari, 2025-03-10 09:15:00)
+    Add signup feature
+commit 7333cf5 (Ari, 2025-03-10 09:30:00)
+    Add cart feature
+commit 70cfbfe (Ari, 2025-03-10 09:45:00)
+Merge: 7333cf5 1cdd61f
+    Merge branch 'feature' into main
+commit 8ff2dea (Ben, 2025-03-10 10:00:00)
+    Fix SIGNUP, signout bug
+commit a16e116 (Ben, 2025-03-10 10:15:00)
+Merge: 70cfbfe 8ff2dea
+    Merge branch 'feature' into main
+commit 013f26e (Ben, 2025-03-10 10:30:00)
+    Docs root
+
+# author: Ari 묶음 → Ben 묶음, 같은 작성자 안에서는 이력 순서 유지 (안정 정렬)
+mini-git> log --sort-by=author
+commit 4280179 (Ari, 2025-03-10 09:00:00)
+    Set up project
+commit 1cdd61f (Ari, 2025-03-10 09:15:00)
+    Add signup feature
+commit 7333cf5 (Ari, 2025-03-10 09:30:00)
+    Add cart feature
+commit 70cfbfe (Ari, 2025-03-10 09:45:00)
+Merge: 7333cf5 1cdd61f
+    Merge branch 'feature' into main
+commit 8ff2dea (Ben, 2025-03-10 10:00:00)
+    Fix SIGNUP, signout bug
+commit a16e116 (Ben, 2025-03-10 10:15:00)
+Merge: 70cfbfe 8ff2dea
+    Merge branch 'feature' into main
+commit 828a093 (Ben, 2025-03-10 08:00:00)
+    Commit from a skewed clock
+commit 013f26e (Ben, 2025-03-10 10:30:00)
+    Docs root
+
+# ── 1-8. 표준 에러 메시지 ─────────────────────────────────────────
+mini-git> switch nope
+Unknown branch: nope
+
+mini-git> ancestors zzzzzzz
+Unknown commit: zzzzzzz
+
+mini-git> path HEAD
+Invalid args
+
+mini-git> log --sort-by=size
+Invalid args
+
+mini-git> search --author
+Invalid args
+
+mini-git> commit
+Invalid args
+
+mini-git> frobnicate
+Unknown command: frobnicate
+
+mini-git> commit "unclosed
+Invalid args (unclosed quote)
+
+mini-git> exit
+Bye.

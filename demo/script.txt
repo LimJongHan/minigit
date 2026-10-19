@@ -1,0 +1,31 @@
+init "Ari"
+commit "Set up project"
+branch feature
+switch feature
+commit "Add signup feature"
+switch main
+commit "Add cart feature"
+log
+path feature main
+search "signup"
+init "Ben"
+switch feature
+commit "Fix signup, signout bug"
+switch main
+merge feature
+log
+log --sort-by=author
+ancestors HEAD
+path feature main
+search --author=ben
+search "signup bug"
+switch --orphan docs
+commit "Docs root"
+path docs main
+branch
+COMMIT
+switch nope
+ancestors zzz
+frobnicate
+commit "unclosed
+quit

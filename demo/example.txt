@@ -1,0 +1,13 @@
+init "Ari"
+commit "Set up project"
+branch feature
+switch feature
+commit "Add signup feature"
+switch main
+commit "Add cart feature"
+log
+path feature main
+search "signup"
+merge feature
+ancestors HEAD
+exit
